@@ -1,11 +1,28 @@
-import express from "express";
+import express, {Request, Response, NextFunction} from "express";
+import cors from "cors"
+import cookieParser from "cookie-parser";
+import { config } from "./config/app.config";
+import { asyncHandler } from "./middlewares/asyncHandler";
+import { HTTPSTATUS } from "./config/http.config";
 
 const app = express();
+const BASE_PATH = config.BASE_PATH;
 
 app.use(express.json());
-
 app.use(express.urlencoded({extended: true}));
+app.use(cors({
+    origin: config.APP_ORIGIN,
+    credentials: true
+}))
+app.use(cookieParser())
 
-app.listen(8000, () => {
+app.get("/", asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    res.status(HTTPSTATUS.OK).json({
+        message: "Hello Subscriber!"
+    })
+}))
+
+
+app.listen(config.PORT, () => {
     console.log("server running");
 })
