@@ -1,9 +1,12 @@
+import "dotenv/config"
 import express, {Request, Response, NextFunction} from "express";
+import "./config/db.config"
 import cors from "cors"
 import cookieParser from "cookie-parser";
 import { config } from "./config/app.config";
 import { asyncHandler } from "./middlewares/asyncHandler";
 import { HTTPSTATUS } from "./config/http.config";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 const BASE_PATH = config.BASE_PATH;
@@ -22,7 +25,9 @@ app.get("/", asyncHandler(async (req: Request, res: Response, next: NextFunction
     })
 }))
 
+app.use(errorHandler);
 
-app.listen(config.PORT, () => {
-    console.log("server running");
+
+app.listen(config.PORT, () => {    
+    console.log(`server running at port ${config.PORT}`);
 })
