@@ -7,6 +7,7 @@ import { config } from "./config/app.config";
 import { asyncHandler } from "./middlewares/asyncHandler";
 import { HTTPSTATUS } from "./config/http.config";
 import { errorHandler } from "./middlewares/errorHandler";
+import appRouter from "./routes";
 
 const app = express();
 const BASE_PATH = config.BASE_PATH;
@@ -24,6 +25,8 @@ app.get("/", asyncHandler(async (req: Request, res: Response, next: NextFunction
         message: "Hello Subscriber!"
     })
 }))
+
+app.use(BASE_PATH, appRouter)
 
 app.use(errorHandler);
 
