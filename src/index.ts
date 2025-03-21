@@ -1,6 +1,6 @@
 import "dotenv/config"
 import express, {Request, Response, NextFunction} from "express";
-import "./config/db.config"
+import "./database/database"
 import cors from "cors"
 import cookieParser from "cookie-parser";
 import { config } from "./config/app.config";

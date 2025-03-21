@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { config } from "./app.config";
+import { config } from "../config/app.config";
 
 const { MONGO_URI } = config;
 // Function to connect to MongoDB
