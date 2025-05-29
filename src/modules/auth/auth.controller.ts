@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../../middlewares/asyncHandler";
 import { HTTPSTATUS } from "../../config/http.config";
-import { registerSchema } from "../../common/validators/auth.validator";
+import { loginSchema, registerSchema } from "../../common/validators/auth.validator";
 import { AuthService } from "./auth.service";
+import { setAuthenticationCookies } from "../../common/utils/cookie";
 
 
 export class AuthController {
@@ -11,54 +12,61 @@ export class AuthController {
     constructor(authService: AuthService) {
         this.authService = authService;
     }
+
+    /**
+     * @desc User registration
+     * @route POST /auth/register
+     * @access Public
+     */
     public register = asyncHandler(
         async (req: Request, res: Response) => {
             const body = registerSchema.parse({
                 ...req.body,
             });
 
-            const {user} = await this.authService.register(body);
+            const { user } = await this.authService.register(body);
             return res.status(HTTPSTATUS.CREATED).json({
                 message: "User registered successfully",
                 data: user
             })
         }
     )
+
+    /**
+     * @desc User login
+     * @route POST /auth/login
+     * @access Public
+     */
     public login = asyncHandler(
         async (req: Request, res: Response) => {
-            // Assuming user authentication is done and user data is available in req.user
-            if (!req.user) {
-                return res.status(HTTPSTATUS.UNAUTHORIZED).json({
-                    error: "Unauthorized"
+            const userAgent = req.headers["user-agent"];
+            const body = loginSchema.parse({
+                ...req.body,
+                userAgent,
+            });
+
+            const { user, accessToken, refreshToken, mfaRequired } =
+                await this.authService.login(body);
+
+            if (mfaRequired) {
+                return res.status(HTTPSTATUS.OK).json({
+                    message: "Verify MFA authentication",
+                    mfaRequired,
+                    user,
                 });
             }
 
+            return setAuthenticationCookies({
+                res,
+                accessToken,
+                refreshToken,
+            }).status(HTTPSTATUS.OK).json({
+                message: "User logged in successfully",
+                mfaRequired,
+                user,
+            });
+
         }
     );
-    // public logout = asyncHandler(
-    //     async (req: Request, res: Response) => {
-    //         console.log({session: req.session});
-    //         console.log({user: req.user});
-    //         req.logOut((err) => {
-    //             if (err) {
-    //                 console.log(err);
-    //                 return res.status(HTTPSTATUS.INTERNAL_SERVER_ERROR).json({
-    //                     error: "An error occurred while logging out"                        
-    //                 })
-    //             }  
-    //             req.session.destroy((err) => {
-    //                 if (err) {
-    //                     console.log(err);
-    //                     return res.status(HTTPSTATUS.INTERNAL_SERVER_ERROR).json({
-    //                         error: "An error occurred while clearing the session"
-    //                     });
-    //                 }
-    //                 return res.status(HTTPSTATUS.OK).json({
-    //                     message: "Logged out successfully"
-    //                 });
-    //             });              
-    //         });
-
-    //     }
-    // )
+    
 }

@@ -1,0 +1,10 @@
+2025-05-29 22:41:40 [INFO]: Login attempt with email: emekarexchukwu@gmail.com
+2025-05-29 22:41:40 [ERROR]: Login failed: Invalid password for user with email emekarexchukwu@gmail.com
+2025-05-29 22:41:49 [INFO]: Login attempt with email: emekarexchukwu@gmail.com
+2025-05-29 22:41:49 [INFO]: Creating session for user ID: 6838ab43e7941b0e69ff7630
+2025-05-29 22:41:50 [INFO]: Signing tokens for user ID: 6838ab43e7941b0e69ff7630
+2025-05-29 22:41:50 [INFO]: Login successful for user ID: 6838ab43e7941b0e69ff7630
+2025-05-29 22:42:40 [INFO]: Login attempt with email: emekarexchukwu@gmail.com
+2025-05-29 22:42:40 [INFO]: Creating session for user ID: 6838ab43e7941b0e69ff7630
+2025-05-29 22:42:40 [INFO]: Signing tokens for user ID: 6838ab43e7941b0e69ff7630
+2025-05-29 22:42:40 [INFO]: Login successful for user ID: 6838ab43e7941b0e69ff7630
