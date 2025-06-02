@@ -3,8 +3,8 @@ import { asyncHandler } from "../../middlewares/asyncHandler";
 import { HTTPSTATUS } from "../../config/http.config";
 import { emailSchema, loginSchema, registerSchema, resetPasswordSchema, verificationEmailSchema } from "../../common/validators/auth.validator";
 import { AuthService } from "./auth.service";
-import { clearAuthenticationCookies, setAuthenticationCookies } from "../../common/utils/cookie";
-import { NotFoundException } from "../../common/utils/catch-errors";
+import { clearAuthenticationCookies, getAccessTokenCookieOptions, getRefreshTokenCookieOptions, setAuthenticationCookies } from "../../common/utils/cookie";
+import { NotFoundException, UnauthorizedException } from "../../common/utils/catch-errors";
 
 
 export class AuthController {
@@ -65,7 +65,6 @@ export class AuthController {
                     user,
                 });
             }
-
             return setAuthenticationCookies({
                 res,
                 accessToken,
@@ -131,6 +130,38 @@ export class AuthController {
     );
 
     /**
+     * @desc User refresh token
+     * @route POST /auth/refresh-token
+     * @access Private
+     */
+    public refreshToken = asyncHandler(
+        async (req: Request, res: Response): Promise<any> => {
+            const refreshToken = req.cookies.refreshToken as string | undefined;
+            if (!refreshToken) {
+                throw new UnauthorizedException("Missing refresh token");
+            }
+
+            const { accessToken, newRefreshToken } =
+                await this.authService.refreshToken(refreshToken);
+
+            if (newRefreshToken) {
+                res.cookie(
+                    "refreshToken",
+                    newRefreshToken,
+                    getRefreshTokenCookieOptions()
+                );
+            }
+
+            return res
+                .status(HTTPSTATUS.OK)
+                .cookie("accessToken", accessToken, getAccessTokenCookieOptions())
+                .json({
+                    message: "Refresh access token successfully",
+                });
+        }
+    )
+
+    /**
      * @desc User logout
      * @route POST /auth/logout
      * @access Private
@@ -143,7 +174,7 @@ export class AuthController {
             }
             await this.authService.logout(sessionId);
             return clearAuthenticationCookies(res).status(HTTPSTATUS.OK).json({
-                message: "User logout successfully",                
+                message: "User logout successfully",
             });
         }
     );

@@ -2,8 +2,8 @@ import { ErrorCode } from "../../common/enums/error-code.enum";
 import { VerificationEnum } from "../../common/enums/verfication-code.enum";
 import { RegisterDto, LoginDto, resetPasswordDto } from "../../common/interface/auth.interface";
 import { hashValue } from "../../common/utils/bcrypt";
-import { BadRequestException, HttpException, InternalServerException, NotFoundException } from "../../common/utils/catch-errors";
-import { anHourFromNow, fortyFiveMinutesFromNow, threeMinutesAgo } from "../../common/utils/date-time";
+import { BadRequestException, HttpException, InternalServerException, NotFoundException, UnauthorizedException } from "../../common/utils/catch-errors";
+import { anHourFromNow, calculateExpirationDate, fortyFiveMinutesFromNow, ONE_DAY_IN_MS, threeMinutesAgo } from "../../common/utils/date-time";
 import { config } from "../../config/app.config";
 import { HTTPSTATUS } from "../../config/http.config";
 import SessionModel from "../../database/models/session.model";
@@ -11,7 +11,7 @@ import UserModel from "../../database/models/user.model";
 import VerificationCodeModel from "../../database/models/verification.model";
 import { sendEmail } from "../../mailers/mailer";
 import { passwordResetTemplate, verifyEmailTemplate } from "../../mailers/templates/template";
-import { refreshTokenSignOptions, signJwtToken } from "../../utils/jwt";
+import { refreshTokenSignOptions, RefreshTPayload, signJwtToken, verifyJwtToken } from "../../utils/jwt";
 import { logger } from "../../utils/logger";
 
 
@@ -145,6 +145,7 @@ export class AuthService {
         })
 
         logger.info(`Signing tokens for user ID: ${user._id}`);
+
         const accessToken = signJwtToken({
             userId: user._id,
             sessionId: session._id,
@@ -233,11 +234,13 @@ export class AuthService {
         const resetLink = `${config.APP_ORIGIN}/reset-password?code=${validCode.code
             }&exp=${expiresAt.getTime()}`;
 
+        console.log("Reset Link:", resetLink);
 
-        await sendEmail({
-            to: user.email,
-            ...passwordResetTemplate(resetLink),
-        });
+        //TODO: Setup email sending
+        // await sendEmail({
+        //     to: user.email,
+        //     ...passwordResetTemplate(resetLink),
+        // });
 
         return {
             url: resetLink,
@@ -267,7 +270,10 @@ export class AuthService {
             throw new BadRequestException("Failed to reset password!");
         }
 
-        await validCode.deleteOne();
+        await VerificationCodeModel.deleteMany({
+            userId: updatedUser._id,
+            type: VerificationEnum.PASSWORD_RESET,
+        });
 
         await SessionModel.deleteMany({
             userId: updatedUser._id,
@@ -278,6 +284,58 @@ export class AuthService {
         };
     }
 
+    // Refresh token
+    public async refreshToken(refreshToken: string) {
+        const { payload, error } = verifyJwtToken<RefreshTPayload>(refreshToken, {
+            secret: refreshTokenSignOptions.secret,
+        });
+        if (!payload) {
+            console.log(`Refresh token error:`, error);
+            throw new UnauthorizedException("Invalid refresh token");
+        }
+
+        const session = await SessionModel.findById(payload.sessionId);
+        const now = Date.now();
+
+        if (!session) {
+            throw new UnauthorizedException("Session does not exist");
+        }
+
+        if (session.expiredAt.getTime() <= now) {
+            throw new UnauthorizedException("Session expired");
+        }
+
+        const sessionRequireRefresh =
+            session.expiredAt.getTime() - now <= ONE_DAY_IN_MS;
+
+        if (sessionRequireRefresh) {
+            session.expiredAt = calculateExpirationDate(
+                config.JWT.REFRESH_EXPIRES_IN
+            );
+            await session.save();
+        }
+        const newRefreshToken = sessionRequireRefresh
+            ? signJwtToken(
+                {
+                    sessionId: session._id,
+                },
+                refreshTokenSignOptions
+            )
+            : undefined;
+
+        const accessToken = signJwtToken({
+            userId: session.userId,
+            sessionId: session._id,
+        });
+
+        return {
+            accessToken,
+            newRefreshToken,
+        };
+
+    }
+
+    // Logout user by deleting the session
     public async logout(sessionId: string) {
         return await SessionModel.findByIdAndDelete(sessionId);
     }

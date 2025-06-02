@@ -1,9 +1,10 @@
 import {z} from "zod";
 import {ErrorRequestHandler, Response} from 'express';
 import { HTTPSTATUS } from "../config/http.config";
-import { clearAuthenticationCookie, REFRESH_PATH } from "../utils/cookie";
+// import { clearAuthenticationCookie, REFRESH_PATH } from "../utils/cookie";
 import { AppError } from "../utils/AppError";
 import { ErrorCode } from "../common/enums/error-code.enum";
+import { clearAuthenticationCookies, REFRESH_PATH } from "../common/utils/cookie";
 
 const formatZodError = (res: Response, error: z.ZodError) => {
     const errors = error?.issues?.map((err) => ({
@@ -20,7 +21,7 @@ export const  errorHandler: ErrorRequestHandler = (error, req, res, next): any =
     console.error(`Error occured on PATH: ${req.path}`, error);
 
     if (req.path === REFRESH_PATH) {
-        clearAuthenticationCookie(res)
+        clearAuthenticationCookies(res)
     }
 
     if (error instanceof SyntaxError) {
