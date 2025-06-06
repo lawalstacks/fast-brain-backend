@@ -1,13 +1,9 @@
 import { Router } from "express";
+import { userController } from "./user.module";
 
 
 const userRoute = Router();
 
-userRoute.get("/", (req, res) => {
-    res.status(200).json({
-        message: "User route is working",
-        user: req.user // Assuming user info is attached to the request
-    });
-});
+userRoute.get("/session", userController.getSession);
 
 export default userRoute;

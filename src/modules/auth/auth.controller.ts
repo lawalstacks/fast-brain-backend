@@ -27,8 +27,8 @@ export class AuthController {
 
             const { user } = await this.authService.register(body);
             return res.status(HTTPSTATUS.CREATED).json({
-                message: "User registered successfully",
-                data: user
+                message: "Verification email sent successfully",  
+                user,              
             })
         }
     )

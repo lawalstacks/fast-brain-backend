@@ -1,10 +1,18 @@
+import { NotFoundException } from "../../common/utils/catch-errors";
+import SessionModel from "../../database/models/session.model";
 import UserModel from "../../database/models/user.model";
 
 export class UserService {
-  public async findUserById(userId: string) {
-    const user = await UserModel.findById(userId, {
-      password: false,
-    });
-    return user || null;
+  public async getSessionById(sessionId: string) {
+    const session = await SessionModel.findById(sessionId)
+
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+    const { userId: user } = session;
+    console.log("SESSIONID")
+    return {
+      user,
+    };
   }
 }

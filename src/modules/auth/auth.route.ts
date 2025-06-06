@@ -10,6 +10,6 @@ authRoutes.post("/forgot-password", authController.forgotPassword);
 authRoutes.post("/reset-password", authController.resetPassword);
 authRoutes.post("/logout", authenticateJWT, authController.logout);
 
-authRoutes.post("/refresh-token", authController.refreshToken);
+authRoutes.get("/refresh-token", authController.refreshToken);
 
 export default authRoutes;

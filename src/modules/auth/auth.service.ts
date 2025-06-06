@@ -58,7 +58,7 @@ export class AuthService {
             expiresAt: fortyFiveMinutesFromNow()
         })
 
-        const verificationUrl = `${config.APP_ORIGIN}/confirm-email?code=${verification.code}`;
+        const verificationUrl = `${config.APP_ORIGIN}/auth/confirm-email?code=${verification.code}`;
 
         console.log("Verification URL:", verificationUrl);
 
@@ -106,7 +106,7 @@ export class AuthService {
                 expiresAt: fortyFiveMinutesFromNow(),
             });
 
-            const verificationUrl = `${config.APP_ORIGIN}/confirm-email?code=${verification.code}`;
+            const verificationUrl = `${config.APP_ORIGIN}/auth/confirm-email?code=${verification.code}`;
 
             // Send the verification email
             console.log("Verification URL:", verificationUrl);
