@@ -5,7 +5,8 @@ import userRoute from "../modules/user/user.route";
 
 const appRouter = Router();
 
+
 appRouter.use("/auth", authRouter);
-appRouter.use("/user", authenticateJWT, userRoute)
+appRouter.use("/user", authenticateJWT, userRoute);
 
 export default appRouter;

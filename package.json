@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "npx nodemon",
     "build": "dotenv -e .env -- npx tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "docker:dev": "docker-compose up --build",
+    "docker:prod": "docker build --target production -t my-app . && docker run my-app"
   },
   "keywords": [],
   "author": "",

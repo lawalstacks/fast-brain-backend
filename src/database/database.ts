@@ -2,19 +2,27 @@ import mongoose from "mongoose";
 import { config } from "../config/app.config";
 
 const { MONGO_URI } = config;
-// Function to connect to MongoDB
-async function connectDB() {
-  try {
-    await mongoose.connect(MONGO_URI as string);
-    console.info("Database Connected Successfully");
-  } catch (error) {
-    console.error("Unable to connect to database: ", error);
-    process.exit(1); // Exit the process with failure
+
+async function connectDBWithRetry(retries = 5, delay = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(MONGO_URI as string);
+      console.info("Database Connected Successfully");
+      return;
+    } catch (error) {
+      console.error(`Unable to connect to database (attempt ${i + 1}):`, error);
+      if (i < retries - 1) {
+        console.info(`Retrying in ${delay / 1000} seconds...`);
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        process.exit(1);
+      }
+    }
   }
 }
 
 // Call the connect function
-connectDB();
+connectDBWithRetry();
 
 // Handle events
 mongoose.connection.on("connected", () => {

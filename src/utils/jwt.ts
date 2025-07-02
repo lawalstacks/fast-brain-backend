@@ -23,8 +23,8 @@ type SignOptsAndSecret = SignOptions & {
   secret: string;
 };
 
-const defaults: SignOptions = {
-  audience: ["user"],
+const defaults = {
+  audience: "user",
 };
 
 type ExpiresIn = number | undefined | StringValue;
@@ -54,13 +54,14 @@ export const verifyJwtToken = <TPayload extends object = AccessTPayload>(
   token: string,
   options?: VerifyOptions & { secret: string }
 ) => {
+
   try {
     const { secret = config.JWT.SECRET, ...opts } = options || {};
     const payload = jwt.verify(token, secret, {
       ...defaults,
       ...opts,
     }) as TPayload;
-    return { payload };
+    return { payload };    
   } catch (err: any) {
     return {
       error: err.message,

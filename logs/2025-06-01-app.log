@@ -1,7 +1,0 @@
-2025-06-01 19:01:35 [INFO]: Login attempt with email: emekarexchukwu@gmail.com
-2025-06-01 19:01:36 [INFO]: Creating session for user ID: 6838ab43e7941b0e69ff7630
-2025-06-01 19:01:36 [INFO]: Signing tokens for user ID: 6838ab43e7941b0e69ff7630
-2025-06-01 19:01:36 [INFO]: Login successful for user ID: 6838ab43e7941b0e69ff7630
-2025-06-01 19:17:26 [INFO]: Login attempt with email: emekarexchukwu@gmail.com
-2025-06-01 19:17:26 [ERROR]: Login failed: User with email emekarexchukwu@gmail.com not found
-2025-06-01 19:18:28 [INFO]: Login attempt with email: emekarexchukwu@gmail.com

@@ -29,9 +29,7 @@ export class UserController {
 
     public getQuiz = asyncHandler(async (req: Request, res: Response) => {
         const subject = req.params.subject;
-        const userId = (req as any).user.userId;
-        // const userId = (req as any).user.userId?.toString().replace(/^new ObjectId\('(.+)'\)$/, "$1");
-        // console.log({sessionId, subject})
+        const userId = (req as any).user.userId;        
 
         if (!subject) {
             throw new BadRequestException("Subject not set.");
