@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { userController } from "./user.module";
-
+import { uploadImage } from "../../config/multer.config";
+import { uploadAndGetUrl } from "../../config/storj.config";
 
 const userRoute = Router();
 

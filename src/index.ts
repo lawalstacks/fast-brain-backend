@@ -33,7 +33,7 @@ app.use((req, res, next) => {
 
 app.get("/", asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     res.status(HTTPSTATUS.OK).json({
-        message: "Hello Subscriber!"
+        message: "Hello Subscribers!"
     })
 }))
 

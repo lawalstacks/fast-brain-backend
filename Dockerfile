@@ -12,6 +12,11 @@ RUN curl -L https://github.com/storj/storj/releases/latest/download/uplink_linux
     rm uplink.zip && \
     chmod +x /usr/local/bin/uplink
 
+# RUN echo "${STORJ_ACCESS_GRANT}" > accessgrant.txt
+
+# RUN uplink access import main accessgrant.txt
+
+# RUN rm accessgrant.txt
 
 WORKDIR /app
 
