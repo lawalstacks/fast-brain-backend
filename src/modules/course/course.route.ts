@@ -17,11 +17,13 @@ courseRoutes.delete("/:id", authenticateJWT, teacherRoute, courseController.dele
 courseRoutes.get(
   "/instructor/my-courses",
   authenticateJWT,
+  teacherRoute,
   courseController.getInstructorCourses
 );
 courseRoutes.patch(
   "/:id/publish",
   authenticateJWT,
+  teacherRoute,
   courseController.toggleCoursePublish
 );
 

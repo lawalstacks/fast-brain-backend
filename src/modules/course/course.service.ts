@@ -6,7 +6,7 @@ import UserModel from "../../database/models/user.model";
 import { CourseFilters, CreateCourseDto, UpdateCourseDto } from "../../common/interface/course.interface";
 import mongoose from "mongoose";
 import { uploadImage } from "../../config/multer.config";
-import { uploadAndGetUrl } from "../../config/storj.config";
+import { deleteFile, uploadAndGetUrl } from "../../config/storj.config";
 
 export class CourseService {
     /**
@@ -84,8 +84,8 @@ export class CourseService {
 
         // Get courses with pagination
         const courses = await CourseModel.find(query)
-            .populate('instructor')
-            .select('title instructor category published imageUrl')
+            // .populate('instructor')
+            .select('title category imageUrl')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -169,10 +169,8 @@ export class CourseService {
 
         if (updateData.imageUrl) {           
             const existingFilename = course.imageUrl.split('/').pop();
-            const imageUrl = await uploadAndGetUrl(updateData.imageUrl.buffer, updateData.imageUrl.originalname, 'demo-bucket', existingFilename);            
-            if (imageUrl) {
-                dataToUpdate.imageUrl = imageUrl;
-            }
+             await uploadAndGetUrl(updateData.imageUrl.buffer, updateData.imageUrl.originalname, 'demo-bucket', existingFilename);            
+            
         }       
         
         dataToUpdate.title = updateData.title;
@@ -202,6 +200,12 @@ export class CourseService {
             throw new BadRequestException("You can only delete your own courses");
         }
 
+        const imageUrl = course.imageUrl?.split('/').pop();
+
+        if (imageUrl) {
+            await deleteFile('demo-bucket', imageUrl);
+        }
+
         await CourseModel.findByIdAndDelete(courseId);
         return { deleted: true };
     }
@@ -210,12 +214,14 @@ export class CourseService {
      * Get instructor's courses
      */
     public async getInstructorCourses(instructorId: string, pagination: { page: number; limit: number }) {
+        if (!mongoose.Types.ObjectId.isValid(instructorId)) {
+            throw new BadRequestException("Invalid instructor ID");
+        }
+
         const { page, limit } = pagination;
         const skip = (page - 1) * limit;
 
         const courses = await CourseModel.find({ instructor: instructorId })
-            .populate('instructor', 'name email')
-            .populate('lessons')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -238,6 +244,10 @@ export class CourseService {
      * Toggle course publish status
      */
     public async toggleCoursePublish(courseId: string, userId: string) {
+        if (!mongoose.Types.ObjectId.isValid(courseId)) {
+            throw new BadRequestException("Invalid course ID");
+        }
+
         const course = await CourseModel.findById(courseId);
 
         if (!course) {
@@ -252,9 +262,9 @@ export class CourseService {
         // Toggle published status
         course.published = !course.published;
         await course.save();
-
-        await course.populate('instructor', 'name email');
-        await course.populate('lessons');
-        return course;
+        
+        return {
+            message: `Course ${course.published ? "published" : "unpublished"} successfully`,            
+        };
     }
 }

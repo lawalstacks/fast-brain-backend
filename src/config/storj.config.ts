@@ -10,7 +10,7 @@ export async function uploadAndGetUrl(
   filename: string,
   bucket: string,
   existingPath?: string
-): Promise<string> {
+): Promise<string | null> {
   let destinationPath: string;
   
   if (existingPath) {
@@ -30,6 +30,10 @@ export async function uploadAndGetUrl(
     // Upload to Storj using stdin stream
     await streamToUplinkExec(stream, destinationPath);
 
+    if (existingPath) {
+      return null;
+    }
+
     // Generate shareable URL
     const shareCmd = `uplink share --url --not-after=none ${destinationPath}`;
     const { stdout } = await execAsync(shareCmd);
@@ -45,6 +49,14 @@ export async function uploadAndGetUrl(
   } catch (error: any) {
     throw new BadRequestException(`Upload failed: ${error.message}`);
   }
+}
+
+export async function deleteFile(
+  bucket: string,
+  path: string
+) {
+  const deleteCmd = `uplink rm sj://${bucket}/${path}`;
+  await execAsync(deleteCmd);
 }
 
 async function streamToUplinkExec(

@@ -147,7 +147,7 @@ export class CourseController {
       const userId = (req as any).user.userId;
       const { page = 1, limit = 10 } = req.query;
 
-      const result = await this.courseService.getInstructorCourses(userId, {
+      const result = await this.courseService.getInstructorCourses(userId.toString(), {
         page: Number(page),
         limit: Number(limit),
       });
@@ -169,13 +169,10 @@ export class CourseController {
       const { id } = req.params;
       const userId = (req as any).user.userId;
 
-      const course = await this.courseService.toggleCoursePublish(id, userId);
+      const {message} = await this.courseService.toggleCoursePublish(id, userId);
 
       return res.status(HTTPSTATUS.OK).json({
-        message: `Course ${
-          course.published ? "published" : "unpublished"
-        } successfully`,
-        course,
+        message,
       });
     }
   );
