@@ -2,11 +2,10 @@
 export interface CreateLessonDto {
     title: string;
     content: string;
-    videoUrl?: string;
-    duration?: number;
-    course: string;
+    video: Express.Multer.File;
+    duration?: string;
+    courseId: string;
     order?: number;
-    attachments?: string[];
 }
 
 export interface UpdateLessonDto {
@@ -15,5 +14,4 @@ export interface UpdateLessonDto {
     videoUrl?: string;
     duration?: number;
     order?: number;
-    attachments?: string[];
 } 

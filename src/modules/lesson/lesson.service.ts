@@ -3,16 +3,23 @@ import { ErrorCode } from "../../common/enums/error-code.enum";
 import LessonModel from "../../database/models/lesson.model";
 import CourseModel from "../../database/models/course.model";
 import { CreateLessonDto, UpdateLessonDto } from "../../common/interface/lesson.interface";
+import mongoose from "mongoose";
+import { uploadAndGetUrl } from "../../config/storj.config";
 
 export class LessonService {
     /**
      * Create a new lesson
      */
     public async createLesson(lessonData: CreateLessonDto, userId: string) {
-        const { course: courseId, order } = lessonData;
+        const { courseId, order } = lessonData;
+
+        if (!mongoose.Types.ObjectId.isValid(courseId)) {
+            throw new BadRequestException("Invalid course ID");
+        }
 
         // Verify course exists and user is the instructor
         const course = await CourseModel.findById(courseId);
+
         if (!course) {
             throw new NotFoundException("Course not found");
         }
@@ -21,10 +28,20 @@ export class LessonService {
             throw new BadRequestException("You can only add lessons to your own courses");
         }
 
+        const dataToCreate: any = {};
+        dataToCreate.title = lessonData.title;
+        dataToCreate.content = lessonData.content;
+        dataToCreate.courseId = courseId;
+        dataToCreate.order = order;
+        dataToCreate.videoUrl = null;
+        dataToCreate.duration = lessonData.duration;
+
         // If order is not provided, set it to the next available order
+        // let lessonOrder = order;
         let lessonOrder = order;
+        
         if (lessonOrder === undefined) {
-            const lastLesson = await LessonModel.findOne({ course: courseId })
+            const lastLesson = await LessonModel.findOne({ courseId: courseId })
                 .sort({ order: -1 })
                 .limit(1);
             lessonOrder = lastLesson ? lastLesson.order + 1 : 0;
@@ -33,7 +50,7 @@ export class LessonService {
         // Check if order already exists for this course
         if (lessonOrder !== undefined) {
             const existingLesson = await LessonModel.findOne({ 
-                course: courseId, 
+                courseId: courseId, 
                 order: lessonOrder 
             });
             if (existingLesson) {
@@ -44,12 +61,17 @@ export class LessonService {
             }
         }
 
+        if (lessonData.video) {
+            const videoUrl = await uploadAndGetUrl(lessonData.video.buffer, lessonData.video.originalname, 'demo-bucket');
+            dataToCreate.videoUrl = videoUrl;
+        }
+
+        console.log("DATA TO CREATE", dataToCreate);
         const lesson = await LessonModel.create({
-            ...lessonData,
+            ...dataToCreate,
             order: lessonOrder
         });
-
-        await lesson.populate('course', 'title');
+        
         return lesson;
     }
 
@@ -62,9 +84,9 @@ export class LessonService {
             throw new NotFoundException("Course not found");
         }
 
-        const lessons = await LessonModel.find({ course: courseId })
+        const lessons = await LessonModel.find({ courseId: courseId })
             .sort({ order: 1 })
-            .populate('course', 'title');
+            .populate('courseId', 'title');
 
         return lessons;
     }
@@ -74,7 +96,7 @@ export class LessonService {
      */
     public async getLessonById(lessonId: string) {
         const lesson = await LessonModel.findById(lessonId)
-            .populate('course', 'title instructor');
+            .populate('courseId', 'title instructor');
 
         if (!lesson) {
             throw new NotFoundException("Lesson not found");
@@ -88,21 +110,21 @@ export class LessonService {
      */
     public async updateLesson(lessonId: string, updateData: UpdateLessonDto, userId: string) {
         const lesson = await LessonModel.findById(lessonId)
-            .populate('course', 'instructor');
+            .populate('courseId', 'instructor');
 
         if (!lesson) {
             throw new NotFoundException("Lesson not found");
         }
 
         // Check if user is the instructor of the course
-        if ((lesson.course as any).instructor.toString() !== userId.toString()) {
+        if ((lesson.courseId as any).instructor.toString() !== userId.toString()) {
             throw new BadRequestException("You can only update lessons in your own courses");
         }
 
         // If order is being updated, check for conflicts
         if (updateData.order !== undefined && updateData.order !== lesson.order) {
             const existingLesson = await LessonModel.findOne({ 
-                course: lesson.course, 
+                courseId: lesson.courseId, 
                 order: updateData.order,
                 _id: { $ne: lessonId }
             });
@@ -118,7 +140,7 @@ export class LessonService {
             lessonId,
             updateData,
             { new: true, runValidators: true }
-        ).populate('course', 'title');
+        ).populate('courseId', 'title');
 
         return updatedLesson;
     }
@@ -128,14 +150,14 @@ export class LessonService {
      */
     public async deleteLesson(lessonId: string, userId: string) {
         const lesson = await LessonModel.findById(lessonId)
-            .populate('course', 'instructor');
+            .populate('courseId', 'instructor');
 
         if (!lesson) {
             throw new NotFoundException("Lesson not found");
         }
 
         // Check if user is the instructor of the course
-        if ((lesson.course as any).instructor.toString() !== userId.toString()) {
+        if ((lesson.courseId as any).instructor.toString() !== userId.toString()) {
             throw new BadRequestException("You can only delete lessons from your own courses");
         }
 
@@ -159,7 +181,7 @@ export class LessonService {
         // Verify all lessons belong to this course
         const lessons = await LessonModel.find({ 
             _id: { $in: lessonIds }, 
-            course: courseId 
+            courseId: courseId 
         });
 
         if (lessons.length !== lessonIds.length) {
@@ -174,9 +196,9 @@ export class LessonService {
         await Promise.all(updatePromises);
 
         // Return updated lessons
-        const updatedLessons = await LessonModel.find({ course: courseId })
+        const updatedLessons = await LessonModel.find({ courseId: courseId })
             .sort({ order: 1 })
-            .populate('course', 'title');
+            .populate('courseId', 'title');
 
         return updatedLessons;
     }

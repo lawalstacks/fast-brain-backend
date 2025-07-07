@@ -8,17 +8,19 @@ export const createLessonSchema = z.object({
     content: z.string()
         .min(1, "Lesson content is required")
         .max(10000, "Lesson content must not exceed 10,000 characters"),
-    videoUrl: z.string().url("Invalid video URL").optional(),
-    duration: z.number()
-        .positive("Duration must be positive")
-        .max(480, "Duration must not exceed 8 hours (480 minutes)")
+    video: z.custom<Express.Multer.File>((val) => {
+        if (!val) return true; // Allow optional
+        return val instanceof Object && 'buffer' in val && 'originalname' in val;
+    }, "Invalid file format"),
+    duration: z.string()
+        .min(1, "Duration is required")
+        .max(50, "Duration must not exceed 50 characters")
         .optional(),
-    course: z.string().min(1, "Course is required"),
+    courseId: z.string().min(1, "Course is required"),
     order: z.number()
         .int("Order must be an integer")
         .min(0, "Order must be non-negative")
         .optional(),
-    attachments: z.array(z.string()).optional(),
 });
 
 export const updateLessonSchema = z.object({
@@ -39,6 +41,5 @@ export const updateLessonSchema = z.object({
     order: z.number()
         .int("Order must be an integer")
         .min(0, "Order must be non-negative")
-        .optional(),
-    attachments: z.array(z.string()).optional(),
+        .optional(),    
 }); 

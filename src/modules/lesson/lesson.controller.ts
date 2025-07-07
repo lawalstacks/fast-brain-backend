@@ -23,7 +23,10 @@ export class LessonController {
    */
   public createLesson = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
-    const body = createLessonSchema.parse(req.body);
+    const body = createLessonSchema.parse({
+      ...req.body,
+      video: req.file,
+    });
 
     const lesson = await this.lessonService.createLesson(body, userId);
 
