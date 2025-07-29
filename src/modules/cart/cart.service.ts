@@ -10,7 +10,7 @@ export class CartService {
     const cart = await CartModel.findOne({ user: userId }).populate({
       path: "items.course",
       select: "title category imageUrl price -_id",
-      populate: [        
+      populate: [
         {
           path: "category",
           select: "name",
@@ -79,32 +79,45 @@ export class CartService {
     }
   }
 
-  // UPDATE CART ITEM QUANTITY
+
+  // REMOVE ITEM FROM CART
   public async removeFromCart(userId: string, productId: string) {
-    console.log({productId, userId});
-  const cart = await CartModel.findOneAndUpdate(
-    { user: userId.toString() },
-    { 
-      $pull: { 
-        items: { 
-          course: { 
-            $in: [productId, new Types.ObjectId(productId)] 
-          } 
-        } 
-      } 
-    },
-    { new: true }
-  );
+    // First check if cart exists and contains the item
+    const existingCart = await CartModel.findOne({ user: userId });
 
-  if (!cart) {
-    throw new NotFoundException("Cart not found");
+    if (!existingCart) {
+      throw new NotFoundException("Cart not found");
+    }
+
+    // Check if the item exists in the cart
+    const itemExists = existingCart.items.some(
+      (item) => {       
+        return item._id == productId
+      }
+    );
+
+    if (!itemExists) {
+      throw new NotFoundException("Item not found in cart");
+    }
+
+    // Remove the item from cart
+    const updatedCart = await CartModel.findOneAndUpdate(
+      { user: userId },
+      {
+        $pull: {
+          items: {
+            _id: productId,
+          },
+        },
+      },
+      { new: true }
+    );
+
+    return {
+      message: "Item removed from cart successfully",
+      cart: updatedCart,
+    };
   }
-
-  console.log("cart", cart);
-
-  return { message: "Item removed from cart successfully" };
-}
-
 
   // CLEAR ENTIRE CART
   public async clearCart(userId: string) {
