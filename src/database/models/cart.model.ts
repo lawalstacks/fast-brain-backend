@@ -1,10 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export interface CartItemDocument extends Document {
+export interface ICartItem {
   course: mongoose.Types.ObjectId;
   price: number;
 }
 
+// Document interface extending Mongoose Document
+export interface CartItemDocument extends ICartItem, Document {}
 export interface CartDocument extends Document {
   user: mongoose.Types.ObjectId;
   items: CartItemDocument[];

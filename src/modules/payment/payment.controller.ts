@@ -20,13 +20,13 @@ export class PaymentController {
   public initializeCheckout = asyncHandler(
     async (req: Request, res: Response) => {
       const userId = (req as any).user?.userId;     
-      const { checkoutUrl } = await this.paymentService.initializeCheckout(
+      const initResult = await this.paymentService.initializeCheckout(
         userId
       );
 
       return res.status(HTTPSTATUS.OK).json({
         message: "Checkout initialized successfully",
-        checkoutUrl,
+        ...initResult
       });
     }
   );
@@ -75,7 +75,6 @@ export class PaymentController {
     const reference = data.reference;
     try {
       await this.paymentService.verifyPayment(reference);
-      console.log(`Payment successful for reference: ${reference}`);
     } catch (error: any) {
       console.error(
         `Error handling successful payment for ${reference}:`,

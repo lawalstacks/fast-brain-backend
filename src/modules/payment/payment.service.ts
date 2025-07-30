@@ -45,25 +45,26 @@ export class PaymentService {
       throw new BadRequestException("Cart is empty");
     }
 
-    // Get user details
-    const user = await UserModel.findById(userId);
+    const courseIds = cart.items.map((item) => item.course._id).sort(); // important: sorted for comparison
+
+    // Fetch user, enrollments, and any pending payment concurrently
+    const [user, existingEnrollments, existingPayment] = await Promise.all([
+      UserModel.findById(userId),
+      EnrollmentModel.find({ user: userId, course: { $in: courseIds } }),
+      PaymentModel.findOne({ user: userId, status: "pending" }),
+    ]);
+
     if (!user) {
       throw new NotFoundException("User not found");
     }
 
-    // Check if user is already enrolled in any of the courses
-    const courseIds = cart.items.map((item) => item.course._id);
-    const existingEnrollments = await EnrollmentModel.find({
-      user: userId,
-      course: { $in: courseIds },
-    });
-
+    // Prevent enrollment duplicates
     if (existingEnrollments.length > 0) {
-      const enrolledCourseIds = existingEnrollments.map((e) =>
-        e.course.toString()
+      const enrolledCourseIds = new Set(
+        existingEnrollments.map((e) => e.course.toString())
       );
       const enrolledCourses = cart.items.filter((item) =>
-        enrolledCourseIds.includes(item.course._id.toString())
+        enrolledCourseIds.has(item.course._id.toString())
       );
 
       throw new BadRequestException(
@@ -73,32 +74,67 @@ export class PaymentService {
       );
     }
 
-    // Create payment record
+    // Generate a new reference for the payment
+    const newReference = this.generateReference();
+
+    if (existingPayment) {
+      const existingCourseIds = [...existingPayment.course]
+        .map((id) => id.toString())
+        .sort();
+      const incomingCourseIds = [...courseIds]
+        .map((id) => id.toString())
+        .sort();
+
+      const isSameSet =
+        existingCourseIds.length === incomingCourseIds.length &&
+        existingCourseIds.every((id, idx) => id === incomingCourseIds[idx]);
+
+      if (isSameSet) {
+        // ✅ Update reference
+        existingPayment.reference = newReference;
+        existingPayment.amount = cart.totalPrice; // in case cart price changed
+        await existingPayment.save();
+
+        // Re-initialize Paystack transaction with same reference
+        const paymentData = await this.initializeTransaction(
+          user.email,
+          cart.totalPrice,
+          newReference,
+          { userId, courseIds }
+        );
+
+        return {
+          checkoutUrl: paymentData.data.authorization_url,
+          reused: true,
+        };
+      }
+    }
+
     const payment = await PaymentModel.create({
       user: userId,
-      courses: courseIds,
+      course: courseIds,
       amount: cart.totalPrice,
       status: "pending",
       paymentMethod: "paystack",
-      reference: this.generateReference(),
+      reference: newReference,
     });
 
-    // Initialize Paystack transaction
     const paymentData = await this.initializeTransaction(
       user.email,
       cart.totalPrice,
-      payment.reference,
+      newReference,
       { userId, courseIds }
     );
 
     return {
       checkoutUrl: paymentData.data.authorization_url,
+      reused: false,
     };
   }
 
   // Verify Payment
   public async verifyPayment(reference: string) {
-    const payment = await PaymentModel.findOne({ reference }).populate("user");
+    const payment = await PaymentModel.findOne({ reference });
 
     if (!payment) {
       throw new NotFoundException("Payment not found");
@@ -108,51 +144,47 @@ export class PaymentService {
       throw new BadRequestException("Payment already processed");
     }
 
-    const verificationResult = await this.verifyTransaction(reference);
+    const { success } = await this.verifyTransaction(reference);
 
-    if (verificationResult.success) {
-      //start transaction
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        // Update payment status
-        payment.status = "completed";
-        await payment.save({ session });
-
-        // Create enrollments for each course
-        const enrollments = payment.course.map((courseId) => ({
-          user: payment.user,
-          course: courseId,
-        }));
-
-        await EnrollmentModel.insertMany(enrollments, { session });
-
-        // Clear user's cart
-        await CartModel.findOneAndUpdate(
-          { user: payment.user },
-          { items: [], totalPrice: 0 },
-          { session }
-        );
-
-        // Commit transaction
-        await session.commitTransaction();
-
-        return {
-          message: "Payment verified successfully",
-        };
-      } catch (error) {
-        await session.abortTransaction();
-        throw error;
-      } finally {
-        session.endSession();
-      }
-    } else {
-      // Payment failed
+    if (!success) {
       payment.status = "failed";
-      await payment.save();
-
+      await payment.save(); // no need for session here
       throw new BadRequestException("Payment verification failed");
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Update payment status
+      payment.status = "completed";
+      await payment.save({ session });
+
+      // Prepare enrollments
+      const enrollments = payment.course.map((courseId) => ({
+        user: payment.user._id, // avoid passing full user object
+        course: courseId,
+      }));
+
+      await EnrollmentModel.insertMany(enrollments, { session });
+
+      // Clear cart
+      await CartModel.findOneAndUpdate(
+        { user: payment.user._id },
+        { items: [], totalPrice: 0 },
+        { session }
+      );
+
+      await session.commitTransaction();
+
+      return {
+        message: "Payment verified successfully",
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
   }
 

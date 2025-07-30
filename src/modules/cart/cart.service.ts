@@ -1,8 +1,11 @@
-import mongoose, { Types } from "mongoose";
-import { NotFoundException } from "../../common/utils/catch-errors";
+import mongoose from "mongoose";
+import {
+  BadRequestException,
+  NotFoundException,
+} from "../../common/utils/catch-errors";
 import CartModel from "../../database/models/cart.model";
 import CourseModel from "../../database/models/course.model";
-import LessonModel from "../../database/models/lesson.model";
+import EnrollmentModel from "../../database/models/enrollment.model";
 
 export class CartService {
   // GET USER CART
@@ -27,57 +30,59 @@ export class CartService {
 
   // ADD ITEM TO CART
   public async addToCart(userId: string, cartData: { courseId: string }) {
-    const { courseId } = cartData;
+  const { courseId } = cartData;
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  const courseObjectId = new mongoose.Types.ObjectId(courseId);
 
-    // Validate course existence
-    const course = await CourseModel.findById(courseId).select("title price");
-    if (!course) {
-      throw new NotFoundException("Course not found");
-    }
-
-    // Check existing cart and validate constraints
-    const existingCart = await CartModel.findOne({ user: userId });
-
-    if (existingCart) {
-      // Check if course already exists
-      const courseExists = existingCart.items.some(
-        (item) => item.course.toString() === courseId
-      );
-      if (courseExists) {
-        throw new Error("Course already exists in cart");
-      }
-
-      // Check if cart is full
-      if (existingCart.items.length >= 10) {
-        throw new Error("Cart can only hold up to 10 items");
-      }
-
-      // Add item to existing cart
-      const updatedCart = await CartModel.findOneAndUpdate(
-        { user: userId },
-        {
-          $push: { items: { course: courseId, price: course.price } },
-        },
-        { new: true }
-      );
-
-      return {
-        message: "Item added to cart successfully",
-        cart: updatedCart,
-      };
-    } else {
-      // Create new cart with the item
-      const newCart = await CartModel.create({
-        user: userId,
-        items: [{ course: courseId, price: course.price }],
-      });
-
-      return {
-        message: "Item added to cart successfully",
-        cart: newCart,
-      };
-    }
+  // 1. Validate course
+  const course = await CourseModel.findById(courseId).select("price").lean();
+  if (!course) {
+    throw new NotFoundException("Course not found");
   }
+  if (typeof course.price !== "number" || course.price <= 0) {
+    throw new BadRequestException("Course price is invalid");
+  }
+
+  // 2. Ensure not already enrolled
+  const isEnrolled = await EnrollmentModel.exists({
+    user: userObjectId,
+    course: courseObjectId,
+  });
+  if (isEnrolled) {
+    throw new BadRequestException("You are already enrolled in this course");
+  }
+
+  // 3. Load or create cart as a document
+  let cart = await CartModel.findOne({ user: userObjectId });
+  if (!cart) {
+    cart = new CartModel({
+      user: userObjectId,
+      items: [],
+    });
+  }
+
+  // 4. Check if course is already in the cart
+  const alreadyInCart = cart.items.some((item) =>
+    item.course.equals(courseObjectId)
+  );
+  if (alreadyInCart) {
+    throw new BadRequestException("Course already exists in cart");
+  }
+
+  // 5. Enforce cart size limit
+  if (cart.items.length >= 10) {
+    throw new BadRequestException("Cart can only hold up to 10 items");
+  }
+
+  // 6. Add item to cart and save (triggering pre-save middleware)
+  cart.items.push({ course: courseObjectId, price: course.price } as any);
+  await cart.save(); // triggers totalPrice calculation
+
+  return {
+    message: "Item added to cart successfully",
+    cart,
+  };
+}
 
 
   // REMOVE ITEM FROM CART
@@ -90,26 +95,52 @@ export class CartService {
     }
 
     // Check if the item exists in the cart
-    const itemExists = existingCart.items.some(
-      (item) => {       
-        return item._id == productId
-      }
-    );
+    const itemExists = existingCart.items.some((item) => {
+      return item._id == productId;
+    });
 
     if (!itemExists) {
       throw new NotFoundException("Item not found in cart");
     }
 
-    // Remove the item from cart
+    // Remove the item and update totalPrice in one operation
     const updatedCart = await CartModel.findOneAndUpdate(
       { user: userId },
-      {
-        $pull: {
-          items: {
-            _id: productId,
+      [
+        {
+          $set: {
+            items: {
+              $filter: {
+                input: "$items",
+                as: "item",
+                cond: {
+                  $ne: ["$$item._id", new mongoose.Types.ObjectId(productId)],
+                },
+              },
+            },
+            totalPrice: {
+              $sum: {
+                $map: {
+                  input: {
+                    $filter: {
+                      input: "$items",
+                      as: "item",
+                      cond: {
+                        $ne: [
+                          "$$item._id",
+                          new mongoose.Types.ObjectId(productId),
+                        ],
+                      },
+                    },
+                  },
+                  as: "filteredItem",
+                  in: "$$filteredItem.price",
+                },
+              },
+            },
           },
         },
-      },
+      ],
       { new: true }
     );
 
