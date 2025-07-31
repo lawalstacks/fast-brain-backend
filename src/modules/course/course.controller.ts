@@ -24,18 +24,18 @@ export class CourseController {
    * @access Private (Instructor only)
    */
   public createCourse = asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user.userId;    
+    const userId = (req as any).user.userId;
     const body = createCourseSchema.parse({
       ...req.body,
-      instructor: userId.toString(),      
+      instructor: userId.toString(),
       imageUrl: req.file,
     });
-    
-    const {courseId} = await this.courseService.createCourse(body);
-    
+
+    const { courseId } = await this.courseService.createCourse(body);
+
     return res.status(HTTPSTATUS.CREATED).json({
       message: "Course created successfully",
-      courseId
+      courseId,
     });
   });
 
@@ -58,11 +58,11 @@ export class CourseController {
 
     let publishedFilter: boolean | undefined;
     if (userRole === Roles.ADMIN) {
-      publishedFilter = published == 'true' ? true : published == 'false' ? false : undefined;
+      publishedFilter =
+        published == "true" ? true : published == "false" ? false : undefined;
     } else {
       publishedFilter = undefined;
     }
-
 
     const filters = {
       page: Number(page),
@@ -75,14 +75,48 @@ export class CourseController {
 
     const response = await this.courseService.getCourses(filters);
 
-
-    
-
     return res.status(HTTPSTATUS.OK).json({
       message: "Courses retrieved successfully",
-      ...response
+      ...response,
     });
   });
+
+  /**
+   * @desc Get all Enrolledc ourses
+   * @route GET /api/courses/user/enrolled-courses
+   * @access Public
+   */
+  public getEnrolledCourses = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = (req as any).user.userId;
+      const { page = 1, limit = 10, category, isCompleted, search } = req.query;
+
+      const isCompleteFilter =
+        isCompleted == "true"
+          ? true
+          : isCompleted == "false"
+          ? false
+          : undefined;
+
+      const filters = {
+        page: Number(page),
+        limit: Number(limit),
+        category: category as string,
+        search: search as string,
+        isCompleted: isCompleteFilter,
+      };
+
+      const response = await this.courseService.getCourseEnrolled(
+        userId,
+        filters
+      );
+      
+      return res.status(HTTPSTATUS.OK).json({
+        message: "Courses retrieved successfully",
+        ...response,
+      });
+    }
+  );
 
   /**
    * @desc Get course by ID
@@ -113,14 +147,14 @@ export class CourseController {
     const { id } = req.params;
     const userId = (req as any).user.userId;
     const body = updateCourseSchema.parse({
-      ...req.body,      
+      ...req.body,
       imageUrl: req.file || null,
     });
-   
-    const {message} = await this.courseService.updateCourse(id, body, userId);
+
+    const { message } = await this.courseService.updateCourse(id, body, userId);
 
     return res.status(HTTPSTATUS.OK).json({
-      message
+      message,
     });
   });
 
@@ -150,10 +184,13 @@ export class CourseController {
       const userId = (req as any).user.userId;
       const { page = 1, limit = 10 } = req.query;
 
-      const result = await this.courseService.getInstructorCourses(userId.toString(), {
-        page: Number(page),
-        limit: Number(limit),
-      });
+      const result = await this.courseService.getInstructorCourses(
+        userId.toString(),
+        {
+          page: Number(page),
+          limit: Number(limit),
+        }
+      );
 
       return res.status(HTTPSTATUS.OK).json({
         message: "Instructor courses retrieved successfully",
@@ -172,7 +209,10 @@ export class CourseController {
       const { id } = req.params;
       const userId = (req as any).user.userId;
 
-      const {message} = await this.courseService.toggleCoursePublish(id, userId);
+      const { message } = await this.courseService.toggleCoursePublish(
+        id,
+        userId
+      );
 
       return res.status(HTTPSTATUS.OK).json({
         message,
@@ -188,12 +228,38 @@ export class CourseController {
   public enrollInCourse = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
     const { id: courseId } = req.params;
-  
-    const enrollment = await this.courseService.enrollUserInCourse(userId, courseId);
-  
+
+    const response = await this.courseService.enrollUserInCourse(
+      courseId,
+      userId
+    );
+
     return res.status(HTTPSTATUS.OK).json({
-      message: "Enrolled successfully",
-      enrollment,
+      ...response,
+    });
+  });
+
+  /**
+   * @desc Get published course for user
+   * @route POST /api/courses/all/user-courses
+   * @access Private (User only)
+   */
+  public getUserCourse = asyncHandler(async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search, category } = req.query;
+
+    const filters = {
+      page: Number(page),
+      limit: Number(limit),
+      category: category as string,
+      published: true,
+      search: search as string,
+    };
+
+    const response = await this.courseService.getCourses(filters);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Courses retrieved successfully",
+      ...response,
     });
   });
 }

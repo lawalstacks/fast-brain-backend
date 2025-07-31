@@ -35,10 +35,16 @@ export class CartService {
   const courseObjectId = new mongoose.Types.ObjectId(courseId);
 
   // 1. Validate course
-  const course = await CourseModel.findById(courseId).select("price").lean();
+  const course = await CourseModel.findById(courseId).select("price published").lean();
   if (!course) {
     throw new NotFoundException("Course not found");
   }
+
+  // ✅ Check if course is published
+  if (!course.published) {
+    throw new BadRequestException("Course is not published");
+  }
+  
   if (typeof course.price !== "number" || course.price <= 0) {
     throw new BadRequestException("Course price is invalid");
   }

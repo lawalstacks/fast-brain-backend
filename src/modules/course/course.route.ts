@@ -8,13 +8,14 @@ const courseRoutes = Router();
 
 // Public routes
 courseRoutes.get("/:id", courseController.getCourseById);
-courseRoutes.get("/all/courses", courseController.getCourses);
+courseRoutes.get("/all/user-courses", courseController.getUserCourse);
 
 // User routes
 courseRoutes.post("/:id/enroll", authenticateJWT, courseController.enrollInCourse);
+courseRoutes.get("/user/enrolled-courses", authenticateJWT, courseController.getEnrolledCourses);
 
 // Private routes (Instructor/Admin/Instructor-only as enforced in controller/service)
-courseRoutes.get("/", authenticateJWT, courseController.getCourses);
+courseRoutes.get("/", authenticateJWT, teacherRoute, courseController.getCourses);
 courseRoutes.post("/", authenticateJWT, teacherRoute, uploadImage.single('image'), courseController.createCourse);
 courseRoutes.put("/:id", authenticateJWT, teacherRoute, uploadImage.single('image'), courseController.updateCourse);
 courseRoutes.delete("/:id", authenticateJWT, teacherRoute, courseController.deleteCourse);
