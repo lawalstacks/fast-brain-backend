@@ -33,11 +33,14 @@ FROM node:22-alpine AS build
 
 WORKDIR /app
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production --ignore-scripts
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci
 
 # Copy application source
 COPY . .
@@ -59,10 +62,14 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --omit=dev
+
 # Copy built application from build stage
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package*.json ./
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
