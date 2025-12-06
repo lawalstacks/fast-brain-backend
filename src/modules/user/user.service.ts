@@ -175,4 +175,31 @@ export class UserService {
       courseEngagement,
     };
   }
+
+  public async getUserStats(userId: string) {
+    const [courses, quizzes] = await Promise.all([
+      EnrollmentModel.countDocuments({ user: userId }),
+      QuizModel.findOne({ user: userId }),
+    ]);
+
+    return {
+      courses,
+      quizzes: quizzes ? quizzes.count : 0,
+      score: quizzes ? quizzes.score : 0,
+    };
+  }
+
+  public async submitQuiz(userId: string, score: number) {
+    let quiz = await QuizModel.findOne({ user: userId });
+
+    if (!quiz) {
+      quiz = await QuizModel.create({ user: userId, count: 0, score: 0 });
+    }
+
+    await quiz.increaseScore(score);
+
+    return {
+      message: "Quiz submitted successfully",
+    };
+  }
 }

@@ -83,4 +83,36 @@ export class UserController {
       ...dashboardData,
     });
   });
+
+  public getUserStats = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+
+    if (!userId) {
+      throw new NotFoundException("User ID not found. Please login in.");
+    }
+
+    const stats = await this.userService.getUserStats(userId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "User stats retrieved successfully",
+      stats,
+    });
+  });
+
+  public submitQuiz = asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user.userId;
+    const { score } = req.body;
+
+    if (!userId) {
+      throw new NotFoundException("User ID not found. Please login in.");
+    }
+
+    if (score === undefined) {
+      throw new BadRequestException("Score is required.");
+    }
+
+    const result = await this.userService.submitQuiz(userId, score);
+
+    return res.status(HTTPSTATUS.OK).json(result);
+  });
 }

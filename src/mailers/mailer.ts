@@ -1,4 +1,4 @@
-import { createTransport } from "nodemailer";
+import { Resend } from "resend";
 import { config } from "../config/app.config";
 
 type Params = {
@@ -9,33 +9,29 @@ type Params = {
   from?: string;
 };
 
-const transporter = createTransport({
-    host: config.BREVO_HOST_URL,
-    port: 465,
-    auth: {
-        user: config.BREVO_USER,
-        pass: config.BREVO_PASS_KEY,
-    }    
-})
+// Initialize Resend client
+const resend = new Resend(config.RESEND_API_KEY);
 
 export const sendEmail = async ({
-    to,
-    subject,
-    text,
-    html,
-    from = config.BREVO_USER
+  to,
+  subject,
+  text,
+  html,
+  from = config.RESEND_FROM_EMAIL
 }: Params) => {
-    try {
-        const info = await transporter.sendMail({
-            from,
-            to: Array.isArray(to) ? to.join(", ") : to,
-            subject,
-            text,
-            html
-        });
-        console.log("Email sent: ", info.messageId);
-    } catch (error) {
-        console.error("Error sending email: ", error);
-        throw new Error("Failed to send email");
-    }
-}
+  try {
+    const info = await resend.emails.send({
+      from,
+      to, // Resend accepts string or array of strings
+      subject,
+      text,
+      html,
+    });
+    console.log(info)
+
+    console.log("Email sent: ", info)
+  } catch (error) {
+    console.error("Error sending email: ", error);
+    throw new Error("Failed to send email via Resend");
+  }
+};

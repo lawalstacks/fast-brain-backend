@@ -14,3 +14,5 @@ export async function getQiz(subject: string) {
     const data = await response.json();
     return data;
 }
+
+//getQiz("mathematics").then(console.log).catch(console.error);

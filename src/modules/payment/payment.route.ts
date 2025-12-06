@@ -2,9 +2,18 @@ import { Router } from "express";
 import { paymentController } from "./payment.module";
 import { authenticateJWT } from "../../common/strategies/jwt.strategy";
 
-const webhookRoutes = Router();
+const paymentRoute = Router();
 
-webhookRoutes.post("/paystack", paymentController.handleWebhook);
-webhookRoutes.post("/initialize", authenticateJWT, paymentController.initializeCheckout);
+paymentRoute.post("/paystack", paymentController.handleWebhook);
+paymentRoute.get(
+  "/checkout",
+  authenticateJWT,
+  paymentController.initializeCheckout
+);
+paymentRoute.get(
+  "/verify",
+  authenticateJWT,
+  paymentController.verifyPayment
+);
 
-export default webhookRoutes;
+export default paymentRoute;

@@ -9,6 +9,8 @@ import { HTTPSTATUS } from "../../config/http.config";
 import SessionModel from "../../database/models/session.model";
 import UserModel from "../../database/models/user.model";
 import VerificationCodeModel from "../../database/models/verification.model";
+import { sendEmail } from "../../mailers/mailer";
+import { verifyEmailTemplate } from "../../mailers/templates/template";
 import { refreshTokenSignOptions, RefreshTPayload, signJwtToken, verifyJwtToken } from "../../utils/jwt";
 import { logger } from "../../utils/logger";
 
@@ -43,10 +45,10 @@ export class AuthService {
         console.log("Verification URL:", verificationUrl);
 
         // TODO: Setup email sending
-        // await sendEmail({
-        //     to: newUser.email,
-        //     ...verifyEmailTemplate(verificationUrl)
-        // })
+        await sendEmail({
+            to: [newUser.email],
+            ...verifyEmailTemplate(verificationUrl)
+        })
 
         return {
             user: newUser,
@@ -91,10 +93,10 @@ export class AuthService {
             // Send the verification email
             console.log("Verification URL:", verificationUrl);
             // TODO: Setup email sending
-            // await sendEmail({
-            //     to: user.email,
-            //     ...verifyEmailTemplate(verificationUrl),
-            // });
+            await sendEmail({
+                to: [user.email],
+                ...verifyEmailTemplate(verificationUrl),
+            });
 
             logger.info(`Verification email sent to ${user.email}`);
 
@@ -124,14 +126,14 @@ export class AuthService {
             name: user.name,
             email: user.email,
             role: user.role,
-            userAgent,        
+            userAgent,
         })
 
         logger.info(`Signing tokens for user ID: ${user._id}`);
 
         const accessToken = signJwtToken({
             userId: user._id,
-            sessionId: session._id,            
+            sessionId: session._id,
         })
 
         const refreshToken = signJwtToken(

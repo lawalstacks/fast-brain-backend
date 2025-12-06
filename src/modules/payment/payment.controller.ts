@@ -31,6 +31,28 @@ export class PaymentController {
     }
   );
 
+
+  /**
+   * @desc Verify a payment
+   * @route GET /api/payment/verify
+   * @access Private
+   */
+  public verifyPayment = asyncHandler(async (req: Request, res: Response) => {
+    const { reference } = req.query;
+
+    if (!reference) {
+      return res.status(HTTPSTATUS.BAD_REQUEST).json({
+        message: "Payment reference is required",
+      });
+    }
+
+    const result = await this.paymentService.verifyPayment(
+      reference as string
+    );
+
+    return res.status(HTTPSTATUS.OK).json(result);
+  });
+
   /**
    * @desc Handle Paystack webhook events
    * @route POST /webhook/paystack

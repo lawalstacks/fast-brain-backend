@@ -12,7 +12,7 @@ export async function uploadAndGetUrl(
   existingPath?: string
 ): Promise<string | null> {
   let destinationPath: string;
-  
+
   if (existingPath) {
     // Use existing path to overwrite
     destinationPath = `sj://${bucket}/${existingPath}`;

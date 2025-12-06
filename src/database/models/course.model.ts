@@ -36,7 +36,7 @@ const courseSchema = new Schema<CourseDocument>(
 courseSchema.virtual('lessons', {
     ref: 'Lesson',
     localField: '_id',
-    foreignField: 'course',
+    foreignField: 'courseId',
     options: { sort: { order: 1 } }
 });
 

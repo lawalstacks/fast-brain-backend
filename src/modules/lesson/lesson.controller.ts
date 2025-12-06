@@ -4,6 +4,7 @@ import { HTTPSTATUS } from "../../config/http.config";
 import {
   createLessonSchema,
   updateLessonSchema,
+  markAsCompletedSchema,
 } from "../../common/validators/lesson.validator";
 import { NotFoundException } from "../../common/utils/catch-errors";
 import { LessonService } from "./lesson.service";
@@ -153,6 +154,27 @@ export class LessonController {
     return res.status(HTTPSTATUS.OK).json({
       message: "Lessons reordered successfully",
       lessons,
+    });
+  });
+
+  /**
+   * @desc Mark a lesson as completed
+   * @route PATCH /api/lessons/:lessonId/complete
+   * @access Private (Authenticated users)
+  */
+  public markAsCompleted = asyncHandler(async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const userId = (req as any).user.userId;
+    const { courseId } = markAsCompletedSchema.parse(req.body);
+
+    if (!mongoose.Types.ObjectId.isValid(lessonId)) {
+      throw new NotFoundException("Invalid lesson id");
+    }
+
+    await this.lessonService.markAsCompleted(userId, lessonId, courseId);
+
+    return res.status(HTTPSTATUS.OK).json({
+      message: "Lesson marked as completed successfully",
     });
   });
 } 

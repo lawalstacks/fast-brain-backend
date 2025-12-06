@@ -48,3 +48,7 @@ export const updateLessonSchema = z.object({
         .min(0, "Order must be non-negative")
         .optional(),    
 }); 
+
+export const markAsCompletedSchema = z.object({
+  courseId: z.string().min(1, "Course ID is required"),
+});

@@ -119,6 +119,28 @@ export class CourseController {
   );
 
   /**
+   * @desc Get a single enrolled course for a user
+   * @route GET /api/courses/enrolled-course/:id
+   * @access Private
+   */
+  public getEnrolledCourse = asyncHandler(
+    async (req: Request, res: Response) => {
+      const userId = (req as any).user.userId;
+      const { id } = req.params;
+
+      const response = await this.courseService.getEnrolledCourse(
+        userId,
+        id
+      );
+
+      return res.status(HTTPSTATUS.OK).json({
+        message: "Enrolled course retrieved successfully",
+        ...response,
+      });
+    }
+  );
+
+  /**
    * @desc Get course by ID
    * @route GET /api/courses/:id
    * @access Public

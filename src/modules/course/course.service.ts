@@ -10,12 +10,13 @@ import {
   BadRequestException,
   NotFoundException,
 } from "../../common/utils/catch-errors";
-import { deleteFile, uploadAndGetUrl } from "../../config/storj.config";
+import { deleteFile, uploadAndGetUrl } from "../../config/cloudinary.config";
 import CategoryModel from "../../database/models/category.model";
 import CourseModel from "../../database/models/course.model";
 import EnrollmentModel from "../../database/models/enrollment.model";
 import UserModel from "../../database/models/user.model";
 import LessonModel from "../../database/models/lesson.model";
+import redisClient from '../../redis.client';
 
 export class CourseService {
   /**
@@ -194,17 +195,17 @@ export class CourseService {
       { $unwind: "$course" },
       ...(search || category
         ? [
-            {
-              $match: {
-                ...(search && {
-                  "course.title": { $regex: search, $options: "i" },
-                }),
-                ...(category && {
-                  "course.category._id": new mongoose.Types.ObjectId(category),
-                }),
-              },
+          {
+            $match: {
+              ...(search && {
+                "course.title": { $regex: search, $options: "i" },
+              }),
+              ...(category && {
+                "course.category._id": new mongoose.Types.ObjectId(category),
+              }),
             },
-          ]
+          },
+        ]
         : []),
       {
         $lookup: {
@@ -235,23 +236,40 @@ export class CourseService {
       },
       ...(typeof isCompleted === "boolean"
         ? [
-            {
-              $match: {
-                $expr: {
-                  [isCompleted ? "$eq" : "$ne"]: [
-                    "$completedLessons",
-                    "$lessonCount",
-                  ],
-                },
+          {
+            $match: {
+              $expr: {
+                [isCompleted ? "$eq" : "$ne"]: [
+                  {
+                    $cond: {
+                      if: { $isArray: "$completedLessons" },
+                      then: { $size: "$completedLessons" },
+                      else: 0,
+                    },
+                  },
+                  "$lessonCount",
+                ],
               },
             },
-          ]
+          },
+        ]
         : []),
     ];
 
     // Now create main pipeline with pagination and projection
     const enrolledCourses = await EnrollmentModel.aggregate([
       ...filterStages,
+      {
+        $addFields: {
+          completedLessonsCount: {
+            $cond: {
+              if: { $isArray: "$completedLessons" },
+              then: { $size: "$completedLessons" },
+              else: 0,
+            },
+          },
+        },
+      },
       {
         $project: {
           _id: 0,
@@ -261,8 +279,21 @@ export class CourseService {
           instructorName: "$instructor.name",
           lessonCount: 1,
           completedLessons: 1,
+          completedLessonsCount: "$completedLessonsCount",
           category: "$course.category.name",
           updatedAt: 1,
+          progress: {
+            $cond: {
+              if: { $gt: ["$lessonCount", 0] },
+              then: {
+                $multiply: [
+                  { $divide: ["$completedLessonsCount", "$lessonCount"] },
+                  100,
+                ],
+              },
+              else: 0,
+            },
+          },
         },
       },
       { $sort: { updatedAt: -1 } },
@@ -286,6 +317,92 @@ export class CourseService {
         totalCourses: total,
         hasNextPage: page < Math.ceil(total / limit),
         hasPrevPage: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Get a single enrolled course for a user
+   */
+  public async getEnrolledCourse(userId: string, courseId: string) {
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      throw new BadRequestException("Invalid course ID");
+    }
+
+    const enrollment = await EnrollmentModel.findOne({
+      user: userId,
+      course: courseId,
+    });
+
+    if (!enrollment) {
+      throw new NotFoundException("Enrolled course not found");
+    }
+
+    const courseDetails = await CourseModel.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(courseId) } },
+      {
+        $lookup: {
+          from: "lessons",
+          localField: "_id",
+          foreignField: "courseId",
+          as: "lessons",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "instructor",
+          foreignField: "_id",
+          as: "instructorInfo",
+        },
+      },
+      {
+        $lookup: {
+          from: "enrollments",
+          localField: "_id",
+          foreignField: "course",
+          as: "enrollments",
+        },
+      },
+      {
+        $addFields: {
+          instructor: { $arrayElemAt: ["$instructorInfo.name", 0] },
+          enrollmentCount: { $size: "$enrollments" },
+        },
+      },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          instructor: 1,
+          category: 1,
+          imageUrl: 1,
+          published: 1,
+          price: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          lessons: {
+            _id: 1,
+            title: 1,
+            content: 1,
+            videoUrl: 1,
+            duration: 1,
+          },
+          enrollmentCount: 1,
+        },
+      },
+    ]);
+
+    if (courseDetails.length === 0) {
+      throw new NotFoundException("Course not found");
+    }
+
+    const course = courseDetails[0];
+
+    return {
+      course: {
+        ...course,
+        completedLessons: enrollment.completedLessons,
       },
     };
   }
@@ -323,6 +440,14 @@ export class CourseService {
         },
       },
       {
+        $lookup: {
+          from: "lessons",
+          localField: "_id",
+          foreignField: "courseId",
+          as: "lessons",
+        },
+      },
+      {
         $project: {
           title: 1,
           description: 1,
@@ -334,6 +459,7 @@ export class CourseService {
           instructorName: 1,
           createdAt: 1,
           updatedAt: 1,
+          lessons: 1,
         },
       },
     ]);
@@ -507,9 +633,8 @@ export class CourseService {
     await course.save();
 
     return {
-      message: `Course ${
-        course.published ? "published" : "unpublished"
-      } successfully`,
+      message: `Course ${course.published ? "published" : "unpublished"
+        } successfully`,
     };
   }
 
@@ -561,8 +686,8 @@ export class CourseService {
   /**
    * Get user's enrolled courses
    */
-  // public async getUserEnrolledCourses(userId: string) {
-  //     const enrollments = await EnrollmentModel.find({ user: userId }).populate('course');
-  //     return enrollments;
-  // }
+  public async getUserEnrolledCourses(userId: string) {
+    const enrollments = await EnrollmentModel.find({ user: userId }).populate('course');
+    return enrollments;
+  }
 }
