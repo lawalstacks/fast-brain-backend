@@ -19,7 +19,7 @@ export class PaymentController {
    */
   public initializeCheckout = asyncHandler(
     async (req: Request, res: Response) => {
-      const userId = (req as any).user?.userId;     
+      const userId = (req as any).user?.userId;
       const initResult = await this.paymentService.initializeCheckout(
         userId
       );
@@ -61,7 +61,7 @@ export class PaymentController {
    */
   public handleWebhook = asyncHandler(async (req: Request, res: Response) => {
     const hash = crypto
-      .createHmac("sha512", config.PAYSTACK_SECRET_KEY || "")
+      .createHmac("sha512", config.PAYSTACK.SECRET_KEY || "")
       .update(JSON.stringify(req.body))
       .digest("hex");
 

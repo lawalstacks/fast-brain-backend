@@ -2,11 +2,11 @@ import { createClient } from "redis";
 import { config } from "./config/app.config";
 
 const redisClient = createClient({
-    username: config.REDIS_USERNAME,
-    password: config.REDIS_PASSWORD,
+    username: config.REDIS.USERNAME,
+    password: config.REDIS.PASSWORD,
     socket: {
-        host: config.REDIS_HOST,
-        port: Number(config.REDIS_PORT),
+        host: config.REDIS.HOST,
+        port: Number(config.REDIS.PORT),
     },
 });
 

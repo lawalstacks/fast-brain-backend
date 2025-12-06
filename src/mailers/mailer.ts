@@ -10,14 +10,14 @@ type Params = {
 };
 
 // Initialize Resend client
-const resend = new Resend(config.RESEND_API_KEY);
+const resend = new Resend(config.RESEND.API_KEY);
 
 export const sendEmail = async ({
   to,
   subject,
   text,
   html,
-  from = config.RESEND_FROM_EMAIL
+  from = config.RESEND.FROM_EMAIL
 }: Params) => {
   try {
     const info = await resend.emails.send({
