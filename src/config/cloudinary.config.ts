@@ -10,7 +10,7 @@ cloudinary.config({
     upload_timeout: 600000, // 10 minutes
 });
 
-// 🛠️ REPAIRED FUNCTION SIGNATURE AND LOGIC
+// REPAIRED FUNCTION SIGNATURE AND LOGIC
 export async function uploadAndGetUrl(
     fileData: Readable | Buffer, // Now accepts both types
     filename: string,

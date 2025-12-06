@@ -20,7 +20,7 @@ export class PaymentService {
   private readonly secretKey: string;
 
   constructor() {
-    this.secretKey = config.PAYSTACK_SECRET_KEY || "";
+    this.secretKey = config.PAYSTACK.SECRET_KEY || "";
     if (!this.secretKey) {
       throw new BadRequestException("Paystack secret key is required");
     }
