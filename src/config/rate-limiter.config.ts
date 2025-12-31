@@ -23,8 +23,8 @@ export const initializeRateLimiters = () => {
         store: new RedisStore({
             sendCommand: (...args: string[]) => redisClient.sendCommand(args),
         }),
-        windowMs: 5 * 60 * 1000, // 5 minutes
-        max: 5,
+        windowMs: 3 * 60 * 1000, // 5 minutes
+        max: 7,
         message: "Too many authentication attempts from this IP, please try again after 5 minutes",
         legacyHeaders: false,
         standardHeaders: true,
