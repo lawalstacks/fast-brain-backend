@@ -11,7 +11,6 @@ import paymentRoute from "../modules/payment/payment.route";
 const appRouter = Router();
 
 appRouter.use("/auth", authRouter);
-userRoute.get("/session", userRoute);
 appRouter.use("/user", authenticateJWT, userRoute);
 appRouter.use("/courses", courseRoutes);
 appRouter.use("/categories", categoryRoutes);
